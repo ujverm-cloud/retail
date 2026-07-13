@@ -436,7 +436,7 @@
     function pageMeta(parts, query) {
       const seg = parts[0] || "";
       const l = window.location;
-      let name, siteSection, viewName, isErrorPage = "false";
+      let name, siteSection, viewName, isErrorPage = false;
 
       if (!seg) {
         name = SITE + ":home"; siteSection = "home"; viewName = "home";
@@ -445,12 +445,12 @@
         const sub = parts[2] ? decodeURIComponent(parts[2]) : null;
         siteSection = "category"; viewName = "category-listing";
         name = SITE + ":category:" + [catId, sub].filter(Boolean).join(":").toLowerCase();
-        if (!SPECIAL[catId] && !categories.find((c) => c.id === catId)) isErrorPage = "true";
+        if (!SPECIAL[catId] && !categories.find((c) => c.id === catId)) isErrorPage = true;
       } else if (seg === "p") {
         const p = byId(parts[1]);
         siteSection = "product"; viewName = "product-detail";
         name = SITE + ":product:" + String(p ? p.id : parts[1] || "unknown").toLowerCase();
-        if (!p) isErrorPage = "true";
+        if (!p) isErrorPage = true;
       } else if (seg === "search") {
         siteSection = "search"; viewName = "search-results"; name = SITE + ":search:results";
       } else if (seg === "cart") {
@@ -472,9 +472,9 @@
       } else if (seg === "page") {
         const slug = parts[1] || "unknown";
         siteSection = "info"; viewName = "info-" + slug; name = SITE + ":info:" + slug;
-        if (!STATIC_PAGES[parts[1]]) isErrorPage = "true";
+        if (!STATIC_PAGES[parts[1]]) isErrorPage = true;
       } else {
-        siteSection = "error"; viewName = "error-404"; name = SITE + ":error:404"; isErrorPage = "true";
+        siteSection = "error"; viewName = "error-404"; name = SITE + ":error:404"; isErrorPage = true;
       }
 
       return {
@@ -483,7 +483,7 @@
         server: l.hostname,
         siteSection: siteSection,
         viewName: viewName,
-        isHomePage: String(!seg),
+        isHomePage: !seg,
         isErrorPage: isErrorPage,
       };
     }
