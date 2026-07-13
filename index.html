@@ -11,7 +11,44 @@
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>" />
   <!-- Adobe Experience Platform Web SDK / Launch (analytics tag) -->
-  <script src="https://assets.adobedtm.com/d4b7d80f6e21/bb3647ac02a0/launch-74f54202e0aa-development.min.js" async></script>
+  <script src="https://assets.adobedtm.com/d4b7d80f6e21/117820aa0e93/launch-0b9763addb04-development.min.js" async></script>
+  <script>
+    adobeDataLayer = [];
+    
+    window.adobeDataLayer.push({
+"event": "pageLoaded",
+"eventType": "web.webPageDetails.pageViews",
+"web":{
+         "webInteraction":{
+            "linkClicks":{
+               "id":"",
+               "value":""
+            },
+            "URL":"",
+            "name":"",
+            "region":"",
+            "type":""
+         },
+         "webPageDetails":{
+            "pageViews":{
+               "id":"",
+               "value":"1"
+            },
+            "URL":"https://luma.enablementadobe.com/",
+            "isErrorPage":"",
+            "isHomePage":"",
+            "name":"luma:home",
+            "server":"enablementadobe.com",
+            "siteSection":"home",
+            "viewName":""
+         },
+         "webReferrer":{
+            "URL":"",
+            "type":""
+         }
+      }
+});
+  </script>
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to main content</a>
