@@ -405,6 +405,141 @@
   }
 
   /* -------------------------------------------------------------------------
+     Adobe Client Data Layer (ACDL) — page view + link click tracking
+     Pushes fully-populated XDM objects on every route change (page views)
+     and every anchor click (link clicks). All attributes are derived from
+     the current route / clicked element rather than hardcoded.
+     ------------------------------------------------------------------------- */
+  const DL = (function () {
+    window.adobeDataLayer = window.adobeDataLayer || [];
+    const push = (o) => window.adobeDataLayer.push(o);
+    const SITE = "fashionhub";
+    // Referrer for the *next* page view: external referrer on first load, then
+    // the previous in-app URL as the user navigates between virtual pages.
+    let prevURL = document.referrer || "";
+
+    // Build page-level metadata (the full webPageDetails set) from a parsed route.
+    function pageMeta(parts, query) {
+      const seg = parts[0] || "";
+      const l = window.location;
+      let name, siteSection, viewName, isErrorPage = "false";
+
+      if (!seg) {
+        name = SITE + ":home"; siteSection = "home"; viewName = "home";
+      } else if (seg === "c") {
+        const catId = parts[1] || "";
+        const sub = parts[2] ? decodeURIComponent(parts[2]) : null;
+        siteSection = "category"; viewName = "category-listing";
+        name = SITE + ":category:" + [catId, sub].filter(Boolean).join(":").toLowerCase();
+        if (!SPECIAL[catId] && !categories.find((c) => c.id === catId)) isErrorPage = "true";
+      } else if (seg === "p") {
+        const p = byId(parts[1]);
+        siteSection = "product"; viewName = "product-detail";
+        name = SITE + ":product:" + String(p ? p.id : parts[1] || "unknown").toLowerCase();
+        if (!p) isErrorPage = "true";
+      } else if (seg === "search") {
+        siteSection = "search"; viewName = "search-results"; name = SITE + ":search:results";
+      } else if (seg === "cart") {
+        siteSection = "cart"; viewName = "cart"; name = SITE + ":cart";
+      } else if (seg === "checkout") {
+        const step = query.step || "shipping";
+        siteSection = "checkout"; viewName = "checkout-" + step; name = SITE + ":checkout:" + step;
+      } else if (seg === "wishlist") {
+        siteSection = "wishlist"; viewName = "wishlist"; name = SITE + ":wishlist";
+      } else if (seg === "brands") {
+        siteSection = "brands"; viewName = "brands"; name = SITE + ":brands";
+      } else if (seg === "gift-cards") {
+        siteSection = "gift-cards"; viewName = "gift-cards"; name = SITE + ":gift-cards";
+      } else if (seg === "login" || seg === "register" || seg === "forgot") {
+        siteSection = "account"; viewName = "auth-" + seg; name = SITE + ":account:" + seg;
+      } else if (seg === "account") {
+        const s = parts[1] || "profile";
+        siteSection = "account"; viewName = "account-" + s; name = SITE + ":account:" + s;
+      } else if (seg === "page") {
+        const slug = parts[1] || "unknown";
+        siteSection = "info"; viewName = "info-" + slug; name = SITE + ":info:" + slug;
+        if (!STATIC_PAGES[parts[1]]) isErrorPage = "true";
+      } else {
+        siteSection = "error"; viewName = "error-404"; name = SITE + ":error:404"; isErrorPage = "true";
+      }
+
+      return {
+        name: name,
+        URL: l.href,
+        server: l.hostname,
+        siteSection: siteSection,
+        viewName: viewName,
+        isHomePage: String(!seg),
+        isErrorPage: isErrorPage,
+      };
+    }
+
+    function pushPageView(parts, query) {
+      const m = pageMeta(parts, query);
+      const l = window.location;
+      const ref = prevURL;
+      push({
+        event: "pageLoaded",
+        eventType: "web.webPageDetails.pageViews",
+        web: {
+          webPageDetails: {
+            pageViews: { id: m.name, value: "1" },
+            URL: m.URL,
+            isErrorPage: m.isErrorPage,
+            isHomePage: m.isHomePage,
+            name: m.name,
+            server: m.server,
+            siteSection: m.siteSection,
+            viewName: m.viewName,
+          },
+          webReferrer: {
+            URL: ref,
+            type: ref ? (ref.indexOf(l.hostname) > -1 ? "internal" : "external") : "",
+          },
+        },
+      });
+      prevURL = l.href;
+    }
+
+    function pushLinkClick(a) {
+      const rawHref = a.getAttribute("href") || "";
+      if (!rawHref || rawHref === "#" || rawHref === "#main") return; // skip skip-link / no-op
+      const l = window.location;
+      const isDownload = a.hasAttribute("download") || /\.(pdf|zip|csv|xlsx?|docx?|pptx?|dmg|pkg)(\?|$)/i.test(rawHref);
+      const external = !!a.hostname && a.hostname !== l.hostname;
+      const type = isDownload ? "download" : external ? "exit" : "other";
+      const label = (a.getAttribute("aria-label") || a.textContent || "").replace(/\s+/g, " ").trim() || rawHref;
+      const region = a.closest("#site-header, header.site") ? "header"
+        : a.closest("#site-footer, footer.site") ? "footer"
+        : a.closest("#drawer") ? "nav"
+        : a.closest("#main, main") ? "main"
+        : "other";
+      push({
+        event: "linkClick",
+        eventType: "web.webInteraction.linkClicks",
+        web: {
+          webInteraction: {
+            linkClicks: { id: String(a.id || label).slice(0, 255), value: "1" },
+            URL: a.href,
+            name: label.slice(0, 255),
+            region: region,
+            type: type,
+          },
+        },
+      });
+    }
+
+    // Delegated capture-phase listener so every anchor click is tracked,
+    // even ones whose handlers stop propagation or change the hash.
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest && e.target.closest("a");
+      if (a) pushLinkClick(a);
+    }, true);
+
+    return { pushPageView: pushPageView, pushLinkClick: pushLinkClick };
+  })();
+
+  /* -------------------------------------------------------------------------
      Router
      ------------------------------------------------------------------------- */
   function parseHash() {
@@ -475,6 +610,7 @@
     const seg = parts[0];
     closeDrawer();
     setDocTitle(titleFor(parts, query));
+    DL.pushPageView(parts, query);
     if (!seg) return renderHome();
     if (seg === "c") return renderListing(parts[1], parts[2] ? decodeURIComponent(parts[2]) : null, query);
     if (seg === "p") return renderProduct(parts[1]);
