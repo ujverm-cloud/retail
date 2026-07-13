@@ -508,7 +508,7 @@
           },
           webReferrer: {
             URL: ref,
-            type: ref ? (ref.indexOf(l.hostname) > -1 ? "internal" : "external") : "",
+            type: "unknown",
           },
         },
       }, identity()));
