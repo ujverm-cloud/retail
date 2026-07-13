@@ -418,6 +418,20 @@
     // the previous in-app URL as the user navigates between virtual pages.
     let prevURL = document.referrer || "";
 
+    // When the user is logged in, expose their email as the primary XDM
+    // identity so every web event is tied to a known profile.
+    function identity() {
+      const acct = (Store.get && Store.get().account) || null;
+      if (!acct || !acct.email) return null;
+      return {
+        identityMap: {
+          Email: [
+            { id: acct.email, authenticatedState: "authenticated", primary: true },
+          ],
+        },
+      };
+    }
+
     // Build page-level metadata (the full webPageDetails set) from a parsed route.
     function pageMeta(parts, query) {
       const seg = parts[0] || "";
@@ -478,7 +492,7 @@
       const m = pageMeta(parts, query);
       const l = window.location;
       const ref = prevURL;
-      push({
+      push(Object.assign({
         event: "pageLoaded",
         eventType: "web.webPageDetails.pageViews",
         web: {
@@ -497,7 +511,7 @@
             type: ref ? (ref.indexOf(l.hostname) > -1 ? "internal" : "external") : "",
           },
         },
-      });
+      }, identity()));
       prevURL = l.href;
     }
 
@@ -514,7 +528,7 @@
         : a.closest("#drawer") ? "nav"
         : a.closest("#main, main") ? "main"
         : "other";
-      push({
+      push(Object.assign({
         event: "linkClick",
         eventType: "web.webInteraction.linkClicks",
         web: {
@@ -526,7 +540,7 @@
             type: type,
           },
         },
-      });
+      }, identity()));
     }
 
     // Delegated capture-phase listener so every anchor click is tracked,
