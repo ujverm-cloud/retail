@@ -619,12 +619,16 @@
     return "Page not found";
   }
 
-  function route() {
-    const { parts, query } = parseHash();
-    const seg = parts[0];
-    closeDrawer();
-    setDocTitle(titleFor(parts, query));
-    DL.pushPageView(parts, query);
+  function notifyPageView() {
+    document.dispatchEvent(new CustomEvent("spaPageView", {
+      detail: {
+        name: document.title,
+        url: window.location.href
+      }
+    }));
+  }
+
+  function dispatchView(parts, query, seg) {
     if (!seg) return renderHome();
     if (seg === "c") return renderListing(parts[1], parts[2] ? decodeURIComponent(parts[2]) : null, query);
     if (seg === "p") return renderProduct(parts[1]);
@@ -640,6 +644,16 @@
     if (seg === "account") return renderAccount(parts[1] || "profile");
     if (seg === "page") return renderStaticPage(parts[1]);
     return renderNotFound();
+  }
+
+  function route() {
+    const { parts, query } = parseHash();
+    const seg = parts[0];
+    closeDrawer();
+    setDocTitle(titleFor(parts, query));
+    DL.pushPageView(parts, query);
+    dispatchView(parts, query, seg);
+    notifyPageView();
   }
 
   /* -------------------------------------------------------------------------
@@ -1878,6 +1892,9 @@
       }
       const name = mode === "register" ? qs("#name").value : email.split("@")[0].replace(/^\w/, (c) => c.toUpperCase());
       Store.login(name, email);
+      document.dispatchEvent(new CustomEvent("userLoggedIn", {
+        detail: { email: email.trim().toLowerCase() }
+      }));
       toast("Signed in — welcome!");
       renderHeader();
       location.hash = "#/account";
@@ -1945,7 +1962,14 @@
         </div>
       </div>`);
 
-    const logout = () => { Store.logout(); toast("Signed out"); renderHeader(); location.hash = "#/"; };
+    const logout = () => {
+      const email = Store.get().account && Store.get().account.email;
+      Store.logout();
+      document.dispatchEvent(new CustomEvent("userLoggedOut", {
+        detail: { email: email ? email.trim().toLowerCase() : null }
+      }));
+      toast("Signed out"); renderHeader(); location.hash = "#/";
+    };
     const lb = qs("#logout"); if (lb) lb.addEventListener("click", logout);
     qs("#logout-side").addEventListener("click", (e) => { e.preventDefault(); logout(); });
     const aa = qs("#add-addr"); if (aa) aa.addEventListener("click", () => { Store.addAddress({ label: "Home", line: "123 Prototype Ave, Demo City, CA 90001" }); renderAccount("addresses"); toast("Address added"); });
