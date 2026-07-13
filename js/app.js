@@ -428,10 +428,53 @@
     if (!opts || !opts.keepScroll) window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   }
 
+  const BASE_TITLE = "FashionHub — Clothing, Shoes & Accessories";
+
+  function setDocTitle(sub) {
+    document.title = sub || BASE_TITLE;
+  }
+
+  // Derive a human-friendly page title from the current route.
+  function titleFor(parts, query) {
+    const seg = parts[0];
+    if (!seg) return null; // home → base title
+    if (seg === "c") {
+      const catId = parts[1];
+      const sub = parts[2] ? decodeURIComponent(parts[2]) : null;
+      if (SPECIAL[catId]) return SPECIAL[catId].title;
+      const cat = categories.find((c) => c.id === catId);
+      if (cat) return sub || cat.name;
+      return "Page not found";
+    }
+    if (seg === "p") {
+      const p = byId(parts[1]);
+      return p ? p.name : "Page not found";
+    }
+    if (seg === "search") return query.q ? `Search: ${query.q}` : "Search";
+    if (seg === "cart") return "Cart";
+    if (seg === "checkout") return "Checkout";
+    if (seg === "wishlist") return "Wishlist";
+    if (seg === "brands") return "Brands";
+    if (seg === "gift-cards") return "Gift Cards";
+    if (seg === "login") return "Sign In";
+    if (seg === "register") return "Create Account";
+    if (seg === "forgot") return "Reset Password";
+    if (seg === "account") {
+      const sections = { profile: "My Account", orders: "My Orders", addresses: "Addresses", payments: "Payment Methods", saved: "Saved Items" };
+      return sections[parts[1] || "profile"] || "My Account";
+    }
+    if (seg === "page") {
+      const page = STATIC_PAGES[parts[1]];
+      return page ? page[0] : "Page not found";
+    }
+    return "Page not found";
+  }
+
   function route() {
     const { parts, query } = parseHash();
     const seg = parts[0];
     closeDrawer();
+    setDocTitle(titleFor(parts, query));
     if (!seg) return renderHome();
     if (seg === "c") return renderListing(parts[1], parts[2] ? decodeURIComponent(parts[2]) : null, query);
     if (seg === "p") return renderProduct(parts[1]);
