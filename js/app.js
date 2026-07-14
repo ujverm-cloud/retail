@@ -623,7 +623,8 @@
     document.dispatchEvent(new CustomEvent("spaPageView", {
       detail: {
         name: document.title,
-        url: window.location.href
+        url: window.location.href,
+        webPageDetails: adobeDataLayer[0].web.webPageDetails
       }
     }));
   }
